@@ -1,5 +1,6 @@
 import tkinter as tk
 
+
 # GRID STUFF
 START = 0
 ICE   = 1
@@ -30,6 +31,7 @@ GRID = [
     [START, CRACK, CRACK, CRACK],
 ]
 
+
 # DIRECTIONS
 UP = 0
 RIGHT = 1
@@ -43,8 +45,21 @@ DIRECTIONS = {
     LEFT:  [0, -1],
 }
 
+
+# PLAY MODES, will add more later
+MODE_MANUAL = 0
+MODE_AUTO = 1
+MODE = MODE_MANUAL
+
+
+# FIELD SETTINGS
+ROWS = 4
+COLS = 4
+SIZE = 64
+TEXT_COL_SPACE = 4
+
 class GameBoard(tk.Frame):
-    def __init__(self, parent, rows=4, cols=4, size=64, grid=GRID):
+    def __init__(self, parent, rows=ROWS, cols=COLS, size=SIZE, text_col_space=TEXT_COL_SPACE, grid=GRID):
         tk.Frame.__init__(self, parent)
 
         self.parent = parent
@@ -63,20 +78,32 @@ class GameBoard(tk.Frame):
             exit()
         self.current_location = self.start_location
 
-        canvas_width = cols * size
+        canvas_width = cols * size + text_col_space*size
         canvas_height = rows * size
 
         self.parent.resizable(False, False)
         self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0, width=canvas_width, height=canvas_height, background="bisque")
-        self.canvas.pack(side="top", fill="both", expand=True, padx=2, pady=2)
+        self.canvas.pack(side="top", expand=True, padx=2, pady=2)
+
+        self.text = tk.Text(self.canvas, height=canvas_height, width=text_col_space*cols*2)
+        self.canvas.create_window((text_col_space*size,0), window=self.text, anchor='nw')
+        self.add_text("SCORE: 0 (last: 0)")
 
         self.do_start()
-        self.bind('<Enter>', lambda e : self.do_start)
-        self.bind('<Up>', lambda e : self.move_player(UP))
-        self.bind('<Right>', lambda e : self.move_player(RIGHT))
-        self.bind('<Down>', lambda e : self.move_player(DOWN))
-        self.bind('<Left>', lambda e : self.move_player(LEFT))
-        self.focus_force()
+
+        self.canvas.bind("<Button-1>", lambda e: self.focus_force())
+
+        if MODE == MODE_MANUAL:
+            # Define keybindings:
+            self.bind('<Enter>', lambda e : self.do_start)
+            self.bind('<Up>',    lambda e : self.move_player(UP))
+            self.bind('<Right>', lambda e : self.move_player(RIGHT))
+            self.bind('<Down>',  lambda e : self.move_player(DOWN))
+            self.bind('<Left>',  lambda e : self.move_player(LEFT))
+            self.focus_force()
+
+        if MODE == MODE_AUTO:
+            self.generate_auto()
 
 
     def do_start(self):
@@ -110,10 +137,28 @@ class GameBoard(tk.Frame):
         self.canvas.create_polygon(coords, outline="black", fill='orange', width=3, tags="player")
 
     def move_player(self, dir):
-        new_direction = [self.current_location[0] + DIRECTIONS[dir][0], self.current_location[1]+DIRECTIONS[dir][1]]
-        if 0 <= new_direction[0] < self.rows and 0 <= new_direction[1] < self.cols:
-            self.current_location = new_direction
-        self.place_player(*self.current_location)
+        new_location= [self.current_location[0] + DIRECTIONS[dir][0], self.current_location[1] + DIRECTIONS[dir][1]] # generate new location
+        if 0 <= new_location[0] < self.rows and 0 <= new_location[1] < self.cols: # check if location is possible
+            self.current_location = new_location # store new location
+            self.place_player(*self.current_location) # place on new location
+
+
+            self.print_score(0, GRID_SCORES[GRID[self.current_location[0]][self.current_location[1]]])
+
+    def evaluate_step(self):
+        pass
+
+    def generate_auto(self):
+        pass
+
+    def print_score(self, total, recent):
+        self.add_text(f"SCORE:{total} [{recent}]")
+
+    def add_text(self, text):
+        if int(self.text.index('end-1c').split('.')[0]) > self.rows*4:
+            self.text.delete(1.0, tk.END)
+        self.text.insert(tk.END, f'{text}\n')
+
 
 if __name__ == "__main__":
     root = tk.Tk()
