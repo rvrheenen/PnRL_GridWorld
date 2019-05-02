@@ -159,11 +159,9 @@ class GameBoard(tk.Frame):
             self.place_player(self.current_location)  # place on new location
 
             cur_place_type = self.get_location_type(self.current_location)
-            cur_score = GRID_SCORES[cur_place_type]
-            self.score += cur_score
-            self.print_score(self.score, cur_score)
 
             if cur_place_type == GOAL or cur_place_type == CRACK:  # if we reached goal or crack
+                self.update_score()
                 self.scores.append(self.score)  # added score to list of achieved scores
                 self.clear_text()
                 self.add_text(f'{"WIN" if cur_place_type == GOAL else "FAIL"} | Score:{self.score} Best:{max(self.scores)}')
@@ -172,16 +170,28 @@ class GameBoard(tk.Frame):
                 self.do_start()
             elif cur_place_type == ICE:
                 if self.slipping or random.random() < 0.05:
+                    if not self.slipping:
+                        self.add_text("Slipped!")
                     self.slipping = True
-                    self.add_text("Slipped!")
                     self.move_player(dir)
+                else:
+                    self.update_score()
             else:  # when on ship
-                self.slipping = False
+                if self.slipping:
+                   self.move_player(dir)
+                else:
+                    self.update_score()
         else:  # When at an edge
             self.slipping = False
 
         if MODE == MODE_MANUAL:
             self.lock = False
+
+    def update_score(self):
+        cur_place_type = self.get_location_type(self.current_location)
+        cur_score = GRID_SCORES[cur_place_type]
+        self.score += cur_score
+        self.print_score(self.score, cur_score)
 
     def get_new_location(self, current, dir):
         if type(dir) == type(UP):
