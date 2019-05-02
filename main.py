@@ -9,7 +9,8 @@ import random
 MODE_MANUAL = 0
 MODE_AUTO_RANDOM = 1
 
-MODE = MODE_MANUAL
+MODE = MODE_AUTO_RANDOM
+
 # FIELD SETTINGS
 ROWS = 4
 COLS = 4
@@ -47,6 +48,8 @@ GRID = [
     [START, CRACK, CRACK, CRACK],
 ]
 
+policies = [[[0,0,0,0] for _ in range(COLS)] for _ in range(ROWS)]
+
 
 # DIRECTIONS
 UP = 0
@@ -73,6 +76,7 @@ class GameBoard(tk.Frame):
         self.grid = grid if grid is not None else [[1 for _ in range(cols)] for _ in range(rows)]
         self.lock = False  # Used to block input when system is busy, used for both modes
         self.slipping = False
+        self.terminated = False
 
         self.score = 0
         self.scores = []
@@ -100,9 +104,8 @@ class GameBoard(tk.Frame):
 
         self.do_start()
 
-        self.canvas.bind("<Button-1>", lambda e: self.focus_force())
-
         if MODE == MODE_MANUAL:
+            self.canvas.bind("<Button-1>", lambda e: self.focus_force())
             # Define keybindings:
             self.bind('<Enter>', lambda e : self.do_start)
             self.bind('<Up>',    lambda e : self.move_player(UP))
@@ -110,10 +113,8 @@ class GameBoard(tk.Frame):
             self.bind('<Down>',  lambda e : self.move_player(DOWN))
             self.bind('<Left>',  lambda e : self.move_player(LEFT))
             self.focus_force()
-        else:
-            if MODE == MODE_AUTO_RANDOM:
-                self.generate_auto_random()
-
+        elif MODE == MODE_AUTO_RANDOM:
+            self.generate_auto_random()
 
     def do_start(self):
         self.draw_grid(self.grid)
@@ -135,6 +136,7 @@ class GameBoard(tk.Frame):
 
     def place_player(self, location):
         r, c = location
+        print(f'placing on {r},{c}')
         self.canvas.delete("player")
         coords = [
             c * self.size + 0.25 * self.size,
@@ -146,6 +148,14 @@ class GameBoard(tk.Frame):
         ]
 
         self.canvas.create_polygon(coords, outline="black", fill='orange', width=3, tags="player")
+        # self.
+
+    def move_player_only(self, dir):
+        new_location = self.get_new_location(self.current_location, dir)
+        if self.is_in_bounds(new_location):
+            self.current_location = new_location  # store new location
+            self.place_player(self.current_location)  # place on new location
+
 
     def move_player(self, dir):
         if MODE == MODE_MANUAL:
@@ -161,37 +171,43 @@ class GameBoard(tk.Frame):
             cur_place_type = self.get_location_type(self.current_location)
 
             if cur_place_type == GOAL or cur_place_type == CRACK:  # if we reached goal or crack
-                self.update_score()
+                self.terminated = True
                 self.scores.append(self.score)  # added score to list of achieved scores
                 self.clear_text()
                 self.add_text(f'{"WIN" if cur_place_type == GOAL else "FAIL"} | Score:{self.score} Best:{max(self.scores)}')
-                self.parent.update()
-                time.sleep(.5)
-                self.do_start()
+                return self.update_score()
+
             elif cur_place_type == ICE:
                 if self.slipping or random.random() < 0.05:
                     if not self.slipping:
                         self.add_text("Slipped!")
                     self.slipping = True
-                    self.move_player(dir)
+                    return self.move_player(dir)
                 else:
-                    self.update_score()
+                    return self.update_score()
+
             else:  # when on ship
                 if self.slipping:
-                   self.move_player(dir)
+                   return self.move_player(dir)
                 else:
-                    self.update_score()
+                    return self.update_score()
         else:  # When at an edge
             self.slipping = False
+            return self.update_score()
 
-        if MODE == MODE_MANUAL:
-            self.lock = False
+
 
     def update_score(self):
         cur_place_type = self.get_location_type(self.current_location)
         cur_score = GRID_SCORES[cur_place_type]
+
         self.score += cur_score
         self.print_score(self.score, cur_score)
+
+        if MODE == MODE_MANUAL:
+            self.lock = False
+
+        return cur_score
 
     def get_new_location(self, current, dir):
         if type(dir) == type(UP):
@@ -207,21 +223,10 @@ class GameBoard(tk.Frame):
     def is_in_bounds(self, location):
         return 0 <= location[0] < self.rows and 0 <= location[1] < self.cols
 
-    def generate_auto_random(self):
-        possible_dirs = []  # list of possible dirs that are in map, and not crack
-        for dir in DIRECTIONS:
-            new_location = self.get_new_location(self.current_location, dir)
-            if self.is_in_bounds(new_location):
-                if self.get_location_type(new_location) is not CRACK:
-                    possible_dirs.append(dir)
-        self.move_player(random.choice(possible_dirs))
-        self.after(250, self.generate_auto_random)
-
     def print_score(self, total, recent):
         self.add_text(f"SCORE:{total} [{recent}]")
 
     def add_text(self, text):
-
         if int(self.text.index('end-1c').split('.')[0]) > self.rows*4:
             # if rows are filled: clear screen. Haven't worked out scrolling yet
             self.clear_text()
@@ -230,6 +235,18 @@ class GameBoard(tk.Frame):
 
     def clear_text(self):
         self.text.delete(1.0, tk.END)
+
+    def generate_auto_random(self):
+        random_dir = random.choice(DIRECTIONS)
+        print(random_dir, self.current_location)
+        self.move_player(random_dir)
+        if self.terminated:
+            self.do_start()
+            self.terminated = False
+            self.after(500, self.generate_auto_random)
+        else:
+            self.after(10, self.generate_auto_random)
+
 
 if __name__ == "__main__":
     root = tk.Tk()
