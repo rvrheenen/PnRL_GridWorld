@@ -1,4 +1,6 @@
 import tkinter as tk
+import time
+import random
 
 
 # GRID STUFF
@@ -67,6 +69,8 @@ class GameBoard(tk.Frame):
         self.cols = cols
         self.size = size
         self.grid = grid if grid is not None else [[1 for _ in range(cols)] for _ in range(rows)]
+        self.lock = False  # Used to block input when system is busy
+        self.slipping = False
 
         self.score = 0
         self.scores = []
@@ -141,23 +145,39 @@ class GameBoard(tk.Frame):
         self.canvas.create_polygon(coords, outline="black", fill='orange', width=3, tags="player")
 
     def move_player(self, dir):
-        new_location = [self.current_location[0] + DIRECTIONS[dir][0], self.current_location[1] + DIRECTIONS[dir][1]] # generate new location
-        if 0 <= new_location[0] < self.rows and 0 <= new_location[1] < self.cols: # check if location is possible
-            self.current_location = new_location # store new location
-            self.place_player(*self.current_location) # place on new location
-            self.evaluate_step()
+        if MODE == MODE_MANUAL:
+            if self.lock and not self.slipping:
+                return
+        self.lock = True
 
-    def evaluate_step(self):
-        cur_place_type = GRID[self.current_location[0]][self.current_location[1]]
-        cur_score = GRID_SCORES[cur_place_type]
-        self.score += cur_score
-        self.print_score(self.score, cur_score)
+        new_location = [self.current_location[0] + DIRECTIONS[dir][0], self.current_location[1] + DIRECTIONS[dir][1]]  # generate new location
+        if 0 <= new_location[0] < self.rows and 0 <= new_location[1] < self.cols:  # check if location is possible
+            self.current_location = new_location  # store new location
+            self.place_player(*self.current_location)  # place on new location
 
-        if cur_place_type == GOAL or cur_place_type == CRACK:  # if we reached goal or crack
-            self.scores.append(self.score)  # added score to list of achieved scores
-            self.clear_text()
-            self.add_text(f'{"WIN" if cur_place_type == GOAL else "FAIL"} | Score:{self.score} Best:{max(self.scores)}')
-            self.do_start()
+            cur_place_type = GRID[self.current_location[0]][self.current_location[1]]
+            cur_score = GRID_SCORES[cur_place_type]
+            self.score += cur_score
+            self.print_score(self.score, cur_score)
+
+            if cur_place_type == GOAL or cur_place_type == CRACK:  # if we reached goal or crack
+                self.scores.append(self.score)  # added score to list of achieved scores
+                self.clear_text()
+                self.add_text(f'{"WIN" if cur_place_type == GOAL else "FAIL"} | Score:{self.score} Best:{max(self.scores)}')
+                self.parent.update()
+                time.sleep(.5)
+                self.do_start()
+            elif cur_place_type == ICE:
+                if self.slipping or random.random() < 0.05:
+                    self.slipping = True
+                    self.add_text("Slipped!")
+                    self.move_player(dir)
+            else:  # when on ship
+                self.slipping = False
+        else:  # When at an edge
+            self.slipping = False
+
+        self.lock = False
 
 
     def generate_auto(self):
