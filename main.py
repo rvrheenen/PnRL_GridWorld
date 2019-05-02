@@ -52,7 +52,7 @@ DIRECTIONS = {
 MODE_MANUAL = 0
 MODE_AUTO_RANDOM = 1
 
-MODE = MODE_MANUAL
+MODE = MODE_AUTO_RANDOM
 
 
 # FIELD SETTINGS
@@ -183,7 +183,7 @@ class GameBoard(tk.Frame):
             self.lock = False
 
     def get_new_location(self, current, dir):
-        if type(dir) == int:
+        if type(dir) == type(UP):
             return [current[0] + DIRECTIONS[dir][0], current[1] + DIRECTIONS[dir][1]]
         elif type(dir) == list:
             return [current[0] + dir[0], current[1] + dir[1]]
@@ -197,7 +197,14 @@ class GameBoard(tk.Frame):
         return 0 <= location[0] < self.rows and 0 <= location[1] < self.cols
 
     def generate_auto_random(self):
-        pass
+        possible_dirs = []  # list of possible dirs that are in map, and not crack
+        for dir in DIRECTIONS:
+            new_location = self.get_new_location(self.current_location, dir)
+            if self.is_in_bounds(new_location):
+                if self.get_location_type(new_location) is not CRACK:
+                    possible_dirs.append(dir)
+        self.move_player(random.choice(possible_dirs))
+        self.after(250, self.generate_auto_random)
 
     def print_score(self, total, recent):
         self.add_text(f"SCORE:{total} [{recent}]")
