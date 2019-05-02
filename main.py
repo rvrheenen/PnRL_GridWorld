@@ -3,6 +3,20 @@ import time
 import random
 
 
+## CONSTANTS
+
+# PLAY MODES, will add more later
+MODE_MANUAL = 0
+MODE_AUTO_RANDOM = 1
+
+MODE = MODE_MANUAL
+# FIELD SETTINGS
+ROWS = 4
+COLS = 4
+SIZE = 64
+TEXT_COL_SPACE = 4
+
+
 # GRID STUFF
 START = 0
 ICE   = 1
@@ -47,19 +61,6 @@ DIRECTIONS = {
     LEFT:  [0, -1],
 }
 
-
-# PLAY MODES, will add more later
-MODE_MANUAL = 0
-MODE_AUTO_RANDOM = 1
-
-MODE = MODE_AUTO_RANDOM
-
-
-# FIELD SETTINGS
-ROWS = 4
-COLS = 4
-SIZE = 64
-TEXT_COL_SPACE = 4
 
 class GameBoard(tk.Frame):
     def __init__(self, parent, rows=ROWS, cols=COLS, size=SIZE, text_col_space=TEXT_COL_SPACE, grid=GRID):
