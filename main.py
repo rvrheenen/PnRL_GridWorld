@@ -68,6 +68,9 @@ class GameBoard(tk.Frame):
         self.size = size
         self.grid = grid if grid is not None else [[1 for _ in range(cols)] for _ in range(rows)]
 
+        self.score = 0
+        self.scores = []
+
         for i in range(len(self.grid)):
             if START in self.grid[i]:
                 self.start_location = [i, self.grid[i].index(START)]
@@ -110,6 +113,7 @@ class GameBoard(tk.Frame):
         self.draw_grid(self.grid)
         self.place_player(*self.start_location)
         self.current_location = self.start_location
+        self.score = 0
 
 
     def draw_grid(self, grid):
@@ -137,16 +141,24 @@ class GameBoard(tk.Frame):
         self.canvas.create_polygon(coords, outline="black", fill='orange', width=3, tags="player")
 
     def move_player(self, dir):
-        new_location= [self.current_location[0] + DIRECTIONS[dir][0], self.current_location[1] + DIRECTIONS[dir][1]] # generate new location
+        new_location = [self.current_location[0] + DIRECTIONS[dir][0], self.current_location[1] + DIRECTIONS[dir][1]] # generate new location
         if 0 <= new_location[0] < self.rows and 0 <= new_location[1] < self.cols: # check if location is possible
             self.current_location = new_location # store new location
             self.place_player(*self.current_location) # place on new location
-
-
-            self.print_score(0, GRID_SCORES[GRID[self.current_location[0]][self.current_location[1]]])
+            self.evaluate_step()
 
     def evaluate_step(self):
-        pass
+        cur_place_type = GRID[self.current_location[0]][self.current_location[1]]
+        cur_score = GRID_SCORES[cur_place_type]
+        self.score += cur_score
+        self.print_score(self.score, cur_score)
+
+        if cur_place_type == GOAL or cur_place_type == CRACK:  # if we reached goal or crack
+            self.scores.append(self.score)  # added score to list of achieved scores
+            self.clear_text()
+            self.add_text(f'{"WIN" if cur_place_type == GOAL else "FAIL"} | Score:{self.score} Best:{max(self.scores)}')
+            self.do_start()
+
 
     def generate_auto(self):
         pass
@@ -155,10 +167,15 @@ class GameBoard(tk.Frame):
         self.add_text(f"SCORE:{total} [{recent}]")
 
     def add_text(self, text):
+
         if int(self.text.index('end-1c').split('.')[0]) > self.rows*4:
-            self.text.delete(1.0, tk.END)
+            # if rows are filled: clear screen. Haven't worked out scrolling yet
+            self.clear_text()
+
         self.text.insert(tk.END, f'{text}\n')
 
+    def clear_text(self):
+        self.text.delete(1.0, tk.END)
 
 if __name__ == "__main__":
     root = tk.Tk()
