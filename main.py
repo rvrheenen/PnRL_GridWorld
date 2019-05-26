@@ -17,6 +17,11 @@ COLS = 4
 SIZE = 64
 TEXT_COL_SPACE = 4
 
+# RUN SETTINGS
+WAIT_AFTER_STEP = 0
+WAIT_AFTER_TERMINATE = 0
+MAX_ITERATIONS = 10000
+
 
 # GRID STUFF
 START = 0
@@ -77,6 +82,8 @@ class GameBoard(tk.Frame):
         self.lock = False  # Used to block input when system is busy, used for both modes
         self.slipping = False
         self.terminated = False
+        self.iterations = 0
+        self.steps = []
 
         self.score = 0
         self.scores = []
@@ -136,7 +143,6 @@ class GameBoard(tk.Frame):
 
     def place_player(self, location):
         r, c = location
-        print(f'placing on {r},{c}')
         self.canvas.delete("player")
         coords = [
             c * self.size + 0.25 * self.size,
@@ -172,10 +178,13 @@ class GameBoard(tk.Frame):
 
             if cur_place_type == GOAL or cur_place_type == CRACK:  # if we reached goal or crack
                 self.terminated = True
-                self.scores.append(self.score)  # added score to list of achieved scores
                 self.clear_text()
+
+                score = self.update_score()
+                self.scores.append(score)  # added score to list of achieved scores
                 self.add_text(f'{"WIN" if cur_place_type == GOAL else "FAIL"} | Score:{self.score} Best:{max(self.scores)}')
-                return self.update_score()
+
+                return score
 
             elif cur_place_type == ICE:
                 if self.slipping or random.random() < 0.05:
@@ -237,15 +246,27 @@ class GameBoard(tk.Frame):
         self.text.delete(1.0, tk.END)
 
     def generate_auto_random(self):
-        random_dir = random.choice(DIRECTIONS)
-        print(random_dir, self.current_location)
-        self.move_player(random_dir)
+        possible_dirs = []
+        for dir in DIRECTIONS:
+            if self.is_in_bounds(self.get_new_location(self.current_location, dir)):
+                possible_dirs.append(dir)
+        self.move_player(random.choice(possible_dirs))
         if self.terminated:
+            self.iterations += 1
             self.do_start()
             self.terminated = False
-            self.after(500, self.generate_auto_random)
+            if self.iterations % 1000 == 0:
+                print(f'{self.iterations} iterations')
+            if self.iterations < MAX_ITERATIONS:
+                self.after(WAIT_AFTER_TERMINATE, self.generate_auto_random)
+            else:
+                self.after_max_iterations()
         else:
-            self.after(10, self.generate_auto_random)
+            self.after(WAIT_AFTER_STEP, self.generate_auto_random)
+
+    def after_max_iterations(self):
+        print(f'Terminating after {MAX_ITERATIONS} iterations.')
+        print(f'Best score: {max(self.scores)}')
 
 
 if __name__ == "__main__":
